@@ -19,5 +19,9 @@ dev = ["pytest>=8"]
 packages = ["src/laya_phishield"]
 
 [tool.pytest.ini_options]
-pythonpath = ["src"]
+pythonpath = ["src", "evals"]
 testpaths = ["tests"]
+markers = [
+    "slow: loads a real laya checkpoint (network download); run explicitly with -m slow",
+]
+addopts = "-m 'not slow'"
