@@ -234,6 +234,14 @@ def main() -> int:
     with open(RESULTS_PATH, "w", encoding="utf-8") as fh:
         json.dump(results, fh, indent=2)
     print("wrote %s" % RESULTS_PATH)
+    # Keep the packaged head artifact in sync with this run.
+    artifact_dir = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "src", "laya_phishield", "data")
+    os.makedirs(artifact_dir, exist_ok=True)
+    with open(os.path.join(artifact_dir, "head.json"), "w", encoding="utf-8") as fh:
+        json.dump(results["composite"]["coefficients"], fh, indent=2)
+    print("wrote src/laya_phishield/data/head.json")
     for name in ("composite", "keyword", "forced_choice", "gpt4o_mini"):
         if name in results:
             print(name, {k: v for k, v in results[name].items()

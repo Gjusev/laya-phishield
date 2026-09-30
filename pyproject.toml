@@ -10,11 +10,15 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }
 keywords = ["phishing-detection", "email-security", "explainable-ai", "fraud-detection", "laya"]
-dependencies = ["laya>=0.3", "scikit-learn>=1.3"]
+dependencies = ["laya>=0.3", "scikit-learn>=1.3", "fastapi>=0.110"]
 
 [project.optional-dependencies]
-dev = ["pytest>=8"]
+dev = ["pytest>=8", "httpx>=0.27"]
 eval = ["openai>=1.40"]
+demo = ["streamlit>=1.35"]
+
+[project.scripts]
+laya-phishield = "laya_phishield.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/laya_phishield"]

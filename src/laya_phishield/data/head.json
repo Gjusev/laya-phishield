@@ -1,0 +1,39 @@
+{
+  "feature_names": [
+    "asks_credentials",
+    "urgency_pressure",
+    "payment_gift_request",
+    "brand_impersonation",
+    "requests_pii",
+    "too_good_to_be_true",
+    "suspicious_instructions",
+    "external_link_risk",
+    "reply_to_mismatch",
+    "url_ip_literal",
+    "url_punycode",
+    "brand_lookalike_domain",
+    "brand_in_subdomain",
+    "display_name_brand_mismatch",
+    "spf_fail",
+    "dkim_fail"
+  ],
+  "coef": [
+    2.791198061647548,
+    2.1751793775312303,
+    0.537828755420961,
+    1.7090316171310214,
+    1.6011317547082131,
+    0.18764578034039553,
+    1.0254041402420062,
+    1.716632650962744,
+    0.5961896505379077,
+    1.4323169613797893,
+    0.0,
+    0.0,
+    0.027305553110056575,
+    0.08158817481483618,
+    0.0,
+    0.0
+  ],
+  "intercept": -3.645673361503125
+}
