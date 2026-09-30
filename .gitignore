@@ -1,18 +1,8 @@
+# Raw and derived datasets: large, re-downloadable via evals/prepare_data.py
+data/raw/
+data/prepared/
+data/cache/
 __pycache__/
-*.py[cod]
-*.egg-info/
-.venv/
-venv/
-dist/
-build/
+*.pyc
 .pytest_cache/
-.coverage
-htmlcov/
-.mypy_cache/
-.ruff_cache/
-.env
-.env.*
-!.env.example
-*.onnx
-.DS_Store
-Thumbs.db
+.venv/

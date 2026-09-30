@@ -1,0 +1,111 @@
+{
+  "composite": {
+    "auc": 0.9531135531135532,
+    "fpr_at_95tpr": 0.20952380952380953,
+    "precision_at_05": 0.9130434782608695,
+    "recall_at_05": 0.8076923076923077,
+    "n": 183,
+    "coefficients": {
+      "feature_names": [
+        "asks_credentials",
+        "urgency_pressure",
+        "payment_gift_request",
+        "brand_impersonation",
+        "requests_pii",
+        "too_good_to_be_true",
+        "suspicious_instructions",
+        "external_link_risk",
+        "reply_to_mismatch",
+        "url_ip_literal",
+        "url_punycode",
+        "brand_lookalike_domain",
+        "brand_in_subdomain",
+        "display_name_brand_mismatch",
+        "spf_fail",
+        "dkim_fail"
+      ],
+      "coef": [
+        2.791198061647548,
+        2.1751793775312303,
+        0.537828755420961,
+        1.7090316171310214,
+        1.6011317547082131,
+        0.18764578034039553,
+        1.0254041402420062,
+        1.716632650962744,
+        0.5961896505379077,
+        1.4323169613797893,
+        0.0,
+        0.0,
+        0.027305553110056575,
+        0.08158817481483618,
+        0.0,
+        0.0
+      ],
+      "intercept": -3.645673361503125
+    },
+    "example_reasons": [
+      {
+        "label": 1,
+        "reasons": [
+          [
+            "brand_impersonation",
+            1.5051441452072907
+          ],
+          [
+            "suspicious_instructions",
+            0.44738382638758734
+          ],
+          [
+            "external_link_risk",
+            0.4173133974490431
+          ]
+        ]
+      },
+      {
+        "label": 0,
+        "reasons": [
+          [
+            "brand_impersonation",
+            0.4257197758273374
+          ],
+          [
+            "urgency_pressure",
+            0.09353271323384289
+          ],
+          [
+            "external_link_risk",
+            0.058022183602540744
+          ]
+        ]
+      }
+    ]
+  },
+  "keyword": {
+    "auc": 0.5947496947496946,
+    "fpr_at_95tpr": 1.0,
+    "precision_at_05": 1.0,
+    "recall_at_05": 0.05128205128205128,
+    "n": 183
+  },
+  "forced_choice": {
+    "auc": 0.9443833943833945,
+    "fpr_at_95tpr": 0.12380952380952381,
+    "precision_at_05": 0.9019607843137255,
+    "recall_at_05": 0.5897435897435898,
+    "n": 183
+  },
+  "ablation": {
+    "asks_credentials": 0.9525391374080402,
+    "urgency_pressure": 0.955893274293086,
+    "payment_gift_request": 0.9567934056227699,
+    "brand_impersonation": 0.9536551491696014,
+    "requests_pii": 0.9546813802401125,
+    "too_good_to_be_true": 0.9573280220354938,
+    "suspicious_instructions": 0.9575593017444767,
+    "external_link_risk": 0.9543504410585405
+  },
+  "gpt4o_mini": {
+    "status": "skipped: set OPENAI_API_KEY to run"
+  }
+}
