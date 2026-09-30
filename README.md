@@ -26,15 +26,11 @@
 
 ---
 
-<video src="brag-output/brag.mp4" poster="brag-output/brag.jpg" controls width="100%">
-  Your browser cannot play the demo. Open the MP4 with the link below.
-</video>
-
 <p align="center">
   <a href="brag-output/brag.mp4">
-    <img src="brag-output/brag.jpg" alt="Video preview showing an explainable phishing verdict with a 0.990 risk score" width="100%">
+    <img src=".media/images/image_001.webp" alt="Animated demo of laya-phishield analyzing an email and explaining its phishing verdict" width="100%">
   </a><br>
-  <sub>▶ <a href="brag-output/brag.mp4">Watch the 20-second demo</a> · H.264 · 1080p</sub>
+  <sub>Autoplays and loops · ▶ <a href="brag-output/brag.mp4">Open the 1080p video</a></sub>
 </p>
 
 ## The short version
