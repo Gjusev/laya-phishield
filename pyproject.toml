@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "laya-phishield"
-version = "0.1.0"
+version = "0.1.1"
 description = "Explainable phishing email detection: atomic semantic signals from a local System 1 decision model plus deterministic header/URL checks, combined by logistic regression"
 readme = "README.md"
 requires-python = ">=3.10"

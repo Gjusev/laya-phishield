@@ -12,6 +12,7 @@
 <p align="center">
   <a href="https://www.python.org/"><img alt="Python 3.10+" src="https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white"></a>
   <a href="https://pypi.org/project/laya-phishield/"><img alt="PyPI: laya-phishield" src="https://img.shields.io/pypi/v/laya-phishield?logo=pypi&logoColor=white&label=PyPI"></a>
+  <a href="https://github.com/Gjusev/laya-phishield/actions/workflows/ci.yml"><img alt="CI status" src="https://github.com/Gjusev/laya-phishield/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://fastapi.tiangolo.com/"><img alt="FastAPI" src="https://img.shields.io/badge/API-FastAPI-009688?logo=fastapi&logoColor=white"></a>
   <a href="LICENSE"><img alt="Apache 2.0 license" src="https://img.shields.io/badge/License-Apache--2.0-D22128?logo=apache&logoColor=white"></a>
   <img alt="Local inference" src="https://img.shields.io/badge/Inference-local-111827">

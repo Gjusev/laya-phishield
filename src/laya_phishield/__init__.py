@@ -3,7 +3,7 @@
 from .extract import ExtractedEmail, extract_email_state
 from .signals import SIGNAL_NAMES, SIGNAL_QUESTIONS, rank_reasons, score_signals
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 __all__ = [
     "ExtractedEmail",

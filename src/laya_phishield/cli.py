@@ -82,7 +82,7 @@ def main(argv: Optional[List[str]] = None, agent=None, head=None,
     scan.add_argument("--json", action="store_true",
                       help="one JSON verdict object per line")
     scan.add_argument("--limit", type=int, default=None,
-                      help="scan at most N emails (after dedup by file order)")
+                      help="scan at most N emails")
 
     args = parser.parse_args(argv)
     if args.command != "scan":
