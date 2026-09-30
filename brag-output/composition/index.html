@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1920, height=1080" />
+<title>laya-phishield — brag</title>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+<style>
+  :root {
+    --canvas: #FBFBFA; --surface: #FFFFFF; --ink: #111111; --muted: #6E6C68;
+    --hairline: #EAEAEA; --red-bg: #FDEBEC; --red-ink: #9F2F2D;
+    --green-bg: #EDF3EC; --green-ink: #346538; --yellow-bg: #FBF3DB; --yellow-ink: #956400;
+    --serif: Georgia, "Playfair Display", "Times New Roman", serif;
+    --sans: "Helvetica Neue", "Segoe UI", Arial, sans-serif;
+    --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { margin: 0; background: #EDECE9; font-family: var(--sans); }
+  #root {
+    position: relative; width: 1920px; height: 1080px; overflow: hidden;
+    background: var(--canvas); color: var(--ink);
+  }
+  .clip { position: absolute; inset: 0; }
+
+  /* shared card */
+  .card {
+    background: var(--surface); border: 1px solid var(--hairline);
+    border-radius: 12px;
+  }
+  .chrome { display: flex; gap: 8px; padding: 0 0 16px; border-bottom: 1px solid var(--hairline); margin-bottom: 18px; }
+  .chrome i { width: 11px; height: 11px; border-radius: 50%; background: #E4E3E0; }
+  .kicker {
+    font-family: var(--mono); font-size: 15px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  .serif-line {
+    font-family: var(--serif); font-weight: 400; color: var(--ink);
+    letter-spacing: -0.02em; line-height: 1.12;
+  }
+  .pill {
+    font-family: var(--mono); font-size: 15px; letter-spacing: 0.1em;
+    text-transform: uppercase; padding: 8px 16px; border-radius: 9999px;
+    display: inline-block;
+  }
+
+  /* scene 1 */
+  #s1 .stage { position: absolute; left: 180px; top: 250px; width: 700px; }
+  #s1 .subject {
+    font-size: 30px; font-weight: 600; line-height: 1.35; margin: 14px 0 10px;
+    letter-spacing: -0.01em; min-height: 82px;
+  }
+  #s1 .from { font-size: 17px; color: var(--muted); }
+  #s1 .from b { color: var(--ink); font-weight: 600; }
+  #s1 .stamp {
+    position: absolute; right: 0; bottom: -110px; text-align: right;
+    font-family: var(--mono); font-size: 92px; font-weight: 700; color: var(--red-ink);
+    opacity: 0;
+  }
+  #s1 .stamp small {
+    display: block; font-size: 15px; font-weight: 400; color: var(--muted);
+    letter-spacing: 0.08em; text-transform: uppercase; margin-top: 2px;
+  }
+  #s1 .hook {
+    position: absolute; left: 180px; bottom: 170px; font-size: 66px; max-width: 1250px;
+    opacity: 0;
+  }
+
+  /* scene 2 */
+  #s2 .caption { position: absolute; left: 180px; top: 300px; font-size: 40px; max-width: 900px; opacity: 0; }
+  #s2 .chips { position: absolute; left: 180px; top: 470px; width: 1000px; }
+  .chip {
+    font-family: var(--mono); font-size: 22px; padding: 16px 26px;
+    border-radius: 9999px; margin-bottom: 20px; display: inline-block; opacity: 0;
+  }
+  .chip-yellow { background: var(--yellow-bg); color: var(--yellow-ink); }
+  .chip-quiet { background: var(--canvas); color: var(--muted); border: 1px dashed var(--hairline); }
+  #s2 .note {
+    position: absolute; left: 180px; bottom: 200px; font-family: var(--mono);
+    font-size: 18px; color: var(--muted); letter-spacing: 0.06em; opacity: 0;
+  }
+
+  /* scene 3 */
+  #s3 .head { position: absolute; left: 180px; top: 150px; font-size: 52px; max-width: 1100px; opacity: 0; }
+  #s3 .sub {
+    position: absolute; left: 180px; top: 245px; font-family: var(--mono);
+    font-size: 17px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; opacity: 0;
+  }
+  #s3 .rows { position: absolute; left: 180px; top: 330px; width: 1560px; }
+  .sig {
+    display: grid; grid-template-columns: 330px 1fr 90px; gap: 26px;
+    align-items: center; margin-bottom: 26px;
+  }
+  .sig .name {
+    font-family: var(--mono); font-size: 21px; color: var(--muted); text-align: right;
+  }
+  .sig .track { height: 14px; background: var(--canvas); border: 1px solid var(--hairline); border-radius: 7px; overflow: hidden; }
+  .sig .fill { height: 100%; width: 0; border-radius: 7px; background: #CFCBC4; }
+  .sig.hot .fill { background: var(--red-ink); }
+  .sig.hot .name { color: var(--ink); }
+  .sig .val { font-family: var(--mono); font-size: 21px; color: var(--muted); opacity: 0; }
+  .sig.hot .val { color: var(--red-ink); font-weight: 700; }
+
+  /* scene 4 */
+  #s4 .plate { position: absolute; left: 180px; top: 230px; width: 800px; padding: 56px 60px; }
+  #s4 .score { font-family: var(--mono); font-size: 150px; font-weight: 700; color: var(--red-ink); letter-spacing: -0.03em; line-height: 1; }
+  #s4 .tag { background: var(--red-bg); color: var(--red-ink); margin-left: 26px; vertical-align: 34px; opacity: 0; }
+  #s4 .whytitle {
+    font-family: var(--mono); font-size: 16px; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.1em; margin: 46px 0 8px; opacity: 0;
+  }
+  #s4 .reason {
+    display: flex; justify-content: space-between; padding: 20px 0;
+    border-bottom: 1px solid var(--hairline); opacity: 0;
+  }
+  #s4 .reason:last-child { border-bottom: 0; }
+  #s4 .reason .r { font-family: var(--mono); font-size: 24px; }
+  #s4 .reason .c { font-family: var(--mono); font-size: 24px; color: var(--red-ink); font-weight: 700; }
+  #s4 .aside {
+    position: absolute; right: 180px; top: 330px; width: 560px;
+    font-size: 34px; text-align: left; line-height: 1.4; opacity: 0;
+  }
+
+  /* scene 5 */
+  #s5 .rows { position: absolute; left: 180px; top: 300px; width: 1560px; }
+  #s5 .verdict { position: absolute; left: 180px; top: 680px; opacity: 0; }
+  #s5 .verdict .score { font-family: var(--mono); font-size: 110px; font-weight: 700; color: var(--green-ink); letter-spacing: -0.03em; margin-right: 30px; }
+  #s5 .verdict .tag { background: var(--green-bg); color: var(--green-ink); vertical-align: 24px; }
+  #s5 .caption { position: absolute; right: 180px; top: 700px; width: 640px; font-size: 32px; line-height: 1.45; opacity: 0; }
+  #s5 .subject { position: absolute; left: 180px; top: 205px; font-size: 26px; font-weight: 600; opacity: 0; }
+  #s5 .subject small { display: block; font-size: 16px; font-weight: 400; color: var(--muted); margin-top: 6px; }
+
+  /* scene 6 */
+  #s6 { background: var(--canvas); }
+  #s6 .line { position: absolute; left: 180px; top: 380px; font-size: 64px; max-width: 1300px; opacity: 0; }
+  #s6 .metrics {
+    position: absolute; left: 180px; bottom: 200px; font-family: var(--mono);
+    font-size: 21px; color: var(--muted); letter-spacing: 0.05em; opacity: 0;
+  }
+  #s6 .metrics b { color: var(--ink); font-weight: 600; }
+  #s6 .brandmark { position: absolute; right: 180px; top: 150px; }
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="brag" data-start="0" data-width="1920" data-height="1080" data-duration="20">
+
+  <!-- music + sfx -->
+  <audio id="brag-music" data-start="0" data-duration="20" data-volume="0.5"
+         src="assets/music/happy-beats-business-moves-vol-10-by-ende-dot-app.mp3"></audio>
+  <audio id="sfx-key1" data-start="0.32" data-duration="0.3" data-volume="0.5" src="assets/sfx/keypress-001.wav"></audio>
+  <audio id="sfx-key2" data-start="0.87" data-duration="0.3" data-volume="0.5" src="assets/sfx/keypress-003.wav"></audio>
+  <audio id="sfx-key3" data-start="1.42" data-duration="0.3" data-volume="0.5" src="assets/sfx/keypress-001.wav"></audio>
+  <audio id="sfx-stamp" data-start="1.95" data-duration="0.4" data-volume="0.65" src="assets/sfx/error_005.ogg"></audio>
+  <audio id="sfx-chip1" data-start="3.55" data-duration="0.3" data-volume="0.45" src="assets/sfx/click2.ogg"></audio>
+  <audio id="sfx-chip2" data-start="4.64" data-duration="0.3" data-volume="0.45" src="assets/sfx/click2.ogg"></audio>
+  <audio id="sfx-bar1" data-start="6.82" data-duration="0.25" data-volume="0.4" src="assets/sfx/click2.ogg"></audio>
+  <audio id="sfx-bar2" data-start="7.35" data-duration="0.25" data-volume="0.4" src="assets/sfx/click2.ogg"></audio>
+  <audio id="sfx-bar3" data-start="7.79" data-duration="0.25" data-volume="0.4" src="assets/sfx/click2.ogg"></audio>
+  <audio id="sfx-bar4" data-start="8.22" data-duration="0.25" data-volume="0.4" src="assets/sfx/click2.ogg"></audio>
+  <audio id="sfx-bar5" data-start="8.73" data-duration="0.25" data-volume="0.32" src="assets/sfx/click2.ogg"></audio>
+  <audio id="sfx-bar6" data-start="9.29" data-duration="0.25" data-volume="0.32" src="assets/sfx/click2.ogg"></audio>
+  <audio id="sfx-bar7" data-start="9.83" data-duration="0.25" data-volume="0.32" src="assets/sfx/click2.ogg"></audio>
+  <audio id="sfx-bar8" data-start="10.38" data-duration="0.25" data-volume="0.32" src="assets/sfx/click2.ogg"></audio>
+  <!-- beat-locked: verdict card lands on the strong cue at 12.56 -->
+  <audio id="sfx-verdict" data-start="12.56" data-duration="0.6" data-volume="0.7" src="assets/sfx/drop_002.ogg"></audio>
+  <audio id="sfx-reason1" data-start="13.10" data-duration="0.25" data-volume="0.35" src="assets/sfx/switch_002.ogg"></audio>
+  <audio id="sfx-reason2" data-start="13.64" data-duration="0.25" data-volume="0.35" src="assets/sfx/switch_002.ogg"></audio>
+  <audio id="sfx-reason3" data-start="14.18" data-duration="0.25" data-volume="0.35" src="assets/sfx/switch_002.ogg"></audio>
+  <audio id="sfx-legit" data-start="16.10" data-duration="0.4" data-volume="0.4" src="assets/sfx/click2.ogg"></audio>
+  <audio id="sfx-outro" data-start="18.55" data-duration="0.4" data-volume="0.4" src="assets/sfx/switch_002.ogg"></audio>
+
+  <!-- scene 1: the wrong question (0 - 3.5) -->
+  <section id="s1" class="clip" data-start="0" data-duration="3.5">
+    <div class="kicker" style="position:absolute; left:180px; top:150px;">laya-phishield</div>
+    <div class="stage card">
+      <div class="chrome"><i></i><i></i><i></i></div>
+      <div class="from"><b>PayPal Security</b> &lt;no-reply@paypal-account-verify.example&gt;</div>
+      <div class="subject" id="s1-subject"></div>
+      <div class="from">confirm your password within 24 hours</div>
+      <div class="stamp" id="s1-stamp">0.59<small>the wide question</small></div>
+    </div>
+    <div class="hook serif-line" id="s1-hook">one big question is the wrong question.</div>
+  </section>
+
+  <!-- scene 2: the pre-pass (3.5 - 6.5) -->
+  <section id="s2" class="clip" data-start="3.5" data-duration="3.0">
+    <div class="caption serif-line" id="s2-caption">first, what code can see for free.</div>
+    <div class="chips">
+      <span class="chip chip-yellow" id="s2-chip1">display name claims a brand it does not own</span>
+      <span class="chip chip-quiet" id="s2-chip2">no other header or URL flag fires</span>
+    </div>
+    <div class="note" id="s2-note">deterministic pre-pass: reply-to, IP-literal and punycode links, homoglyph domains, SPF/DKIM</div>
+  </section>
+
+  <!-- scene 3: eight narrow questions (6.5 - 12) -->
+  <section id="s3" class="clip" data-start="6.5" data-duration="5.5">
+    <div class="head serif-line" id="s3-head">eight narrow questions, one forward pass.</div>
+    <div class="sub" id="s3-sub">a local decision model &middot; cpu &middot; $0</div>
+    <div class="rows" id="s3-rows"></div>
+  </section>
+
+  <!-- scene 4: the verdict (12 - 16) -->
+  <section id="s4" class="clip" data-start="12" data-duration="4.0">
+    <div class="plate card" id="s4-plate">
+      <span class="score" id="s4-score">0.990</span><span class="pill tag" id="s4-tag">phishing</span>
+      <div class="whytitle" id="s4-why">why</div>
+      <div class="reason" id="s4-r1"><span class="r">asks_credentials</span><span class="c">+2.56</span></div>
+      <div class="reason" id="s4-r2"><span class="r">urgency_pressure</span><span class="c">+1.86</span></div>
+      <div class="reason" id="s4-r3"><span class="r">external_link_risk</span><span class="c">+1.56</span></div>
+    </div>
+    <div class="aside serif-line" id="s4-aside">the verdict names what pushed it.</div>
+  </section>
+
+  <!-- scene 5: the other side (16 - 18.5) -->
+  <section id="s5" class="clip" data-start="16" data-duration="2.5">
+    <div class="subject" id="s5-subject">Release notes 1.4.2<small>Alice Nguyen &lt;alice.nguyen@acme-corp.example&gt;</small></div>
+    <div class="rows" id="s5-rows"></div>
+    <div class="verdict" id="s5-verdict">
+      <span class="score">0.053</span><span class="pill tag">legitimate</span>
+    </div>
+    <div class="caption serif-line" id="s5-caption">the same pipeline waves it through.</div>
+  </section>
+
+  <!-- scene 6: outro (18.5 - 20) -->
+  <section id="s6" class="clip" data-start="18.5" data-duration="1.5">
+    <div class="brandmark kicker">laya-phishield</div>
+    <div class="line serif-line" id="s6-line">eight narrow questions, one verdict, every reason named.</div>
+    <div class="metrics" id="s6-metrics">AUC <b>0.9531</b> &nbsp;&middot;&nbsp; recall <b>+21.8 pt</b> vs the wide question &nbsp;&middot;&nbsp; <b>$0</b> per 1,000 emails</div>
+  </section>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---- scene 3 rows (phish) and scene 5 rows (legit): real measured values
+  var SIGNALS = [
+    ["asks_credentials", 0.92, true],
+    ["external_link_risk", 0.91, true],
+    ["urgency_pressure", 0.86, true],
+    ["brand_impersonation", 0.86, true],
+    ["suspicious_instructions", 0.22, false],
+    ["payment_gift_request", 0.22, false],
+    ["requests_pii", 0.22, false],
+    ["too_good_to_be_true", 0.00, false]
+  ];
+  var LEGIT = [
+    ["brand_impersonation", 0.27, false],
+    ["suspicious_instructions", 0.09, false],
+    ["urgency_pressure", 0.04, false],
+    ["external_link_risk", 0.03, false],
+    ["asks_credentials", 0.02, false],
+    ["payment_gift_request", 0.00, false],
+    ["requests_pii", 0.00, false],
+    ["too_good_to_be_true", 0.00, false]
+  ];
+
+  function buildRows(hostId, rows) {
+    var host = document.getElementById(hostId);
+    rows.forEach(function (r) {
+      var div = document.createElement("div");
+      div.className = "sig" + (r[2] ? " hot" : "");
+      div.innerHTML =
+        '<span class="name">' + r[0] + "</span>" +
+        '<span class="track"><span class="fill"></span></span>' +
+        '<span class="val">' + r[1].toFixed(2) + "</span>";
+      host.appendChild(div);
+    });
+  }
+  buildRows("s3-rows", SIGNALS);
+  buildRows("s5-rows", LEGIT);
+
+  // ---- typed subject for scene 1: fixed string, deterministic char split
+  var SUBJECT = "URGENT: Your account has been limited";
+  var subjectEl = document.getElementById("s1-subject");
+  SUBJECT.split("").forEach(function (ch) {
+    var span = document.createElement("span");
+    span.textContent = ch === " " ? " " : ch;
+    span.style.opacity = "0";
+    subjectEl.appendChild(span);
+  });
+
+  var tl = gsap.timeline({ paused: true });
+
+  // scene 1 (0 - 3.5): card in, subject types on key ticks, stamp rejects
+  tl.fromTo("#s1 .stage", { y: 44, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 0.55, ease: "power3.out" }, 0.05);
+  tl.to("#s1-subject span", { opacity: 1, duration: 0.04, stagger: { each: 0.042, from: "start" } }, 0.32);
+  // stamp: fast-in, hold (readable floor)
+  tl.fromTo("#s1-stamp", { scale: 1.5, autoAlpha: 0 }, { scale: 1, autoAlpha: 1, duration: 0.28, ease: "power4.out" }, 1.95);
+  tl.fromTo("#s1-hook", { y: 26, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 0.5, ease: "power3.out" }, 2.55);
+
+  // scene 2 (3.5 - 6.5)
+  tl.fromTo("#s2-caption", { y: 24, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 0.5, ease: "power3.out" }, 3.55);
+  // beat-grid: chips at 3.55 and 4.64
+  tl.fromTo("#s2-chip1", { y: 20, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 0.4, ease: "power3.out" }, 3.55);
+  tl.fromTo("#s2-chip2", { y: 20, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 0.4, ease: "power3.out" }, 4.64);
+  tl.fromTo("#s2-note", { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.45 }, 5.30);
+
+  // scene 3 (6.5 - 12)
+  tl.fromTo("#s3-head", { y: 24, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 0.5, ease: "power3.out" }, 6.5);
+  tl.fromTo("#s3-sub", { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.4 }, 6.85);
+  tl.fromTo("#s3 .sig", { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.35, stagger: 0.06 }, 6.6);
+  // beat-grid: bars at 6.82 7.35 7.79 8.22 8.73 9.29 9.83 10.38 (+/- 0.10s)
+  var BAR_BEATS = [6.82, 7.35, 7.79, 8.22, 8.73, 9.29, 9.83, 10.38];
+  var fills = document.querySelectorAll("#s3 .sig .fill");
+  var vals = document.querySelectorAll("#s3 .sig .val");
+  BAR_BEATS.forEach(function (t, i) {
+    tl.fromTo(fills[i], { width: 0 }, { width: (SIGNALS[i][1] * 100) + "%", duration: 0.5, ease: "power2.out" }, t);
+    tl.fromTo(vals[i], { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.3 }, t + 0.18);
+  });
+
+  // scene 4 (12 - 16): verdict card beat-locked to the strong cue at 12.56
+  tl.fromTo("#s4-plate", { y: 60, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 0.55, ease: "power4.out" }, 12.56);
+  tl.fromTo("#s4-tag", { scale: 1.4, autoAlpha: 0 }, { scale: 1, autoAlpha: 1, duration: 0.3, ease: "power4.out" }, 12.95);
+  tl.fromTo("#s4-why", { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.3 }, 13.0);
+  tl.fromTo("#s4-r1", { x: -18, autoAlpha: 0 }, { x: 0, autoAlpha: 1, duration: 0.35, ease: "power3.out" }, 13.10);
+  tl.fromTo("#s4-r2", { x: -18, autoAlpha: 0 }, { x: 0, autoAlpha: 1, duration: 0.35, ease: "power3.out" }, 13.64);
+  tl.fromTo("#s4-r3", { x: -18, autoAlpha: 0 }, { x: 0, autoAlpha: 1, duration: 0.35, ease: "power3.out" }, 14.18);
+  tl.fromTo("#s4-aside", { y: 20, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 0.45, ease: "power3.out" }, 14.7);
+
+  // scene 5 (16 - 18.5): one settled frame, holds
+  tl.fromTo("#s5-subject", { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.3 }, 16.05);
+  tl.fromTo("#s5 .sig", { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.25 }, 16.05);
+  var lFills = document.querySelectorAll("#s5 .sig .fill");
+  LEGIT.forEach(function (r, i) {
+    tl.set(lFills[i], { width: (r[1] * 100) + "%" }, 16.05);
+  });
+  tl.fromTo("#s5 .sig .val", { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.25, stagger: 0.03 }, 16.1);
+  tl.fromTo("#s5-verdict", { y: 24, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 0.4, ease: "power3.out" }, 16.35);
+  tl.fromTo("#s5-caption", { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.4 }, 16.9);
+
+  // scene 6 (18.5 - 20): serif line lands on the strong cue at 18.55
+  tl.fromTo("#s6-line", { y: 22, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 0.45, ease: "power3.out" }, 18.55);
+  tl.fromTo("#s6-metrics", { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.4 }, 18.9);
+
+  window.__timelines["brag"] = tl;
+})();
+</script>
+</body>
+</html>

@@ -102,6 +102,10 @@ rather than in extra ranking power on this corpus.
 
 ## Product
 
+Visual explainer: [`docs/how-it-works.html`](docs/how-it-works.html) animates
+the whole pipeline on real measured values (phishing and legitimate run,
+side by side; stills in `docs/assets/`). Launch video: `brag-output/brag.mp4`.
+
 Scan files in batch (mbox, single eml, or jsonl of `{"raw": ...}` records):
 
 ```bash

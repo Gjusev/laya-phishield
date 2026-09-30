@@ -1,0 +1,16 @@
+I stopped asking "is this email phishing?" and started asking eight narrow
+questions. Every number in this video is real model output: the 0.92 on
+asks_credentials, the 0.990 verdict, the 0.053 when the same pipeline waves
+a release-notes email through. Local model, CPU, $0 per 1,000 emails, and
+every verdict names its reasons.
+
+Repo: github.com/Gjusev/laya-phishield
+
+---
+
+Short variant (X/Discord):
+
+One big question is the wrong question. Eight narrow ones, one verdict,
+every reason named: asks_credentials 0.92, urgency 0.86, link risk 0.91
+-> 0.990 PHISHING. Same machine waves a legit email through at 0.053. All
+real output, all local, $0/1k emails.

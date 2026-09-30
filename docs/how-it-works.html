@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How laya-phishield decides</title>
+<style>
+  :root {
+    --canvas: #FBFBFA;
+    --surface: #FFFFFF;
+    --ink: #111111;
+    --muted: #787774;
+    --hairline: #EAEAEA;
+    --red-bg: #FDEBEC;  --red-ink: #9F2F2D;
+    --green-bg: #EDF3EC; --green-ink: #346538;
+    --blue-bg: #E1F3FE;  --blue-ink: #1F6C9F;
+    --yellow-bg: #FBF3DB; --yellow-ink: #956400;
+    --sans: "Helvetica Neue", "Segoe UI", Arial, sans-serif;
+    --serif: Georgia, "Times New Roman", serif;
+    --mono: ui-monospace, "Cascadia Mono", "JetBrains Mono", Consolas, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--canvas); color: var(--ink);
+    font-family: var(--sans); font-size: 16px; line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+
+  /* ---------- hero ---------- */
+  header { padding: 96px 0 72px; }
+  .kicker {
+    font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 20px;
+  }
+  h1 {
+    font-family: var(--serif); font-weight: 400;
+    font-size: clamp(40px, 6vw, 72px); line-height: 1.05;
+    letter-spacing: -0.03em; max-width: 14ch;
+  }
+  .hero-grid { display: grid; grid-template-columns: 3fr 2fr; gap: 48px; align-items: end; }
+  .hero-side p { color: var(--muted); max-width: 44ch; }
+  .hero-side p strong { color: var(--ink); font-weight: 600; }
+
+  /* ---------- animation stage ---------- */
+  .flow-outer { padding: 24px 0 96px; }
+  .controls { display: flex; gap: 10px; align-items: center; margin-bottom: 28px; flex-wrap: wrap; }
+  .controls .spacer { flex: 1; }
+  .seg {
+    display: inline-flex; border: 1px solid var(--hairline); border-radius: 8px;
+    overflow: hidden; background: var(--surface);
+  }
+  .seg button {
+    font: inherit; font-size: 13px; padding: 9px 18px; border: 0;
+    background: transparent; color: var(--muted); cursor: pointer;
+  }
+  .seg button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+  .replay {
+    font: inherit; font-size: 13px; padding: 9px 18px; cursor: pointer;
+    border: 1px solid var(--hairline); border-radius: 6px;
+    background: var(--surface); color: var(--ink);
+  }
+  .replay:active { transform: scale(0.98); }
+  .step-caption {
+    font-family: var(--mono); font-size: 12.5px; color: var(--muted);
+    min-height: 20px; letter-spacing: 0.02em;
+  }
+  .step-caption b { color: var(--ink); font-weight: 600; }
+
+  .flow {
+    display: grid; grid-template-columns: 1.05fr 0.95fr 1.25fr 1.05fr;
+    gap: 14px; align-items: stretch;
+  }
+  .stage {
+    background: var(--surface); border: 1px solid var(--hairline);
+    border-radius: 12px; padding: 20px; min-height: 340px;
+    display: flex; flex-direction: column;
+    opacity: 0; transform: translateY(12px);
+  }
+  .stage-label {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.09em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 14px;
+  }
+  .stage-label .n { color: var(--ink); margin-right: 6px; }
+
+  /* window chrome for the email card */
+  .chrome { display: flex; gap: 6px; padding-bottom: 12px; border-bottom: 1px solid var(--hairline); margin-bottom: 14px; }
+  .chrome i { width: 9px; height: 9px; border-radius: 50%; background: #E4E3E0; }
+  .email-from { font-size: 13px; color: var(--muted); }
+  .email-from b { color: var(--ink); font-weight: 600; }
+  .email-subject { font-size: 15.5px; font-weight: 600; line-height: 1.35; margin: 8px 0 12px; letter-spacing: -0.01em; }
+  .email-body {
+    font-family: var(--mono); font-size: 12px; line-height: 1.65;
+    color: var(--muted); white-space: pre-line; overflow-wrap: anywhere;
+  }
+  .link-host { color: var(--red-ink); background: var(--red-bg); padding: 0 4px; border-radius: 3px; }
+
+  .chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: var(--mono); font-size: 12px; padding: 7px 12px;
+    border-radius: 9999px; margin: 0 6px 8px 0;
+    opacity: 0; transform: translateY(8px);
+  }
+  .chip-yellow { background: var(--yellow-bg); color: var(--yellow-ink); }
+  .chip-quiet {
+    background: var(--canvas); color: var(--muted);
+    border: 1px dashed var(--hairline);
+  }
+  .flags-note { font-size: 12.5px; color: var(--muted); margin-top: auto; line-height: 1.5; }
+
+  .signals { display: flex; flex-direction: column; gap: 9px; }
+  .sig { display: grid; grid-template-columns: 118px 1fr 34px; gap: 10px; align-items: center; }
+  .sig-name { font-family: var(--mono); font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sig-track { height: 8px; background: var(--canvas); border: 1px solid var(--hairline); border-radius: 4px; overflow: hidden; }
+  .sig-fill { height: 100%; width: 0; border-radius: 4px; background: #CFCBC4; }
+  .sig.hot .sig-fill { background: var(--red-ink); }
+  .sig.hot .sig-name { color: var(--ink); }
+  .sig-val { font-family: var(--mono); font-size: 11px; text-align: right; color: var(--muted); opacity: 0; }
+  .sig.hot .sig-val { color: var(--red-ink); }
+
+  .verdict-head { display: flex; align-items: baseline; gap: 14px; }
+  .verdict-score {
+    font-family: var(--mono); font-size: 44px; letter-spacing: -0.03em;
+  }
+  .verdict-tag {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.09em;
+    text-transform: uppercase; padding: 5px 11px; border-radius: 9999px;
+  }
+  .why-title { font-size: 12px; color: var(--muted); margin: 18px 0 10px; text-transform: uppercase; letter-spacing: 0.07em; font-family: var(--mono); }
+  .reason { display: flex; justify-content: space-between; gap: 8px; padding: 9px 0; border-bottom: 1px solid var(--hairline); font-size: 13.5px; }
+  .reason:last-of-type { border-bottom: 0; }
+  .reason .r-name { font-family: var(--mono); font-size: 12.5px; }
+  .reason .r-val { font-family: var(--mono); font-size: 12.5px; color: var(--muted); }
+  .state-phish .verdict-score { color: var(--red-ink); }
+  .state-phish .verdict-tag { background: var(--red-bg); color: var(--red-ink); }
+  .state-phish .reason .r-name { color: var(--ink); }
+  .state-legit .verdict-score { color: var(--green-ink); }
+  .state-legit .verdict-tag { background: var(--green-bg); color: var(--green-ink); }
+  .state-legit .reason .r-name { color: var(--muted); }
+  .foot-note { margin-top: auto; padding-top: 14px; font-size: 12px; color: var(--muted); line-height: 1.55; }
+
+  /* entrance choreography (transform/opacity only) */
+  .play .stage { animation: rise 600ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+  .play .stage:nth-child(1) { animation-delay: 0ms; }
+  .play .stage:nth-child(2) { animation-delay: 240ms; }
+  .play .stage:nth-child(3) { animation-delay: 520ms; }
+  .play .stage:nth-child(4) { animation-delay: 4100ms; }
+  @keyframes rise { to { opacity: 1; transform: translateY(0); } }
+
+  .play .chip { animation: chipIn 420ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+  .play .chip:nth-of-type(1) { animation-delay: 900ms; }
+  .play .chip:nth-of-type(2) { animation-delay: 1120ms; }
+  @keyframes chipIn { to { opacity: 1; transform: translateY(0); } }
+
+  .play .sig-fill { transition: width 700ms cubic-bezier(0.16, 1, 0.3, 1); }
+  .play .sig-val { transition: opacity 400ms ease 350ms; }
+
+  .play .verdict-head, .play .why-title, .play .reason, .play .foot-note {
+    opacity: 0; animation: rise 500ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  .play .verdict-head { animation-delay: 4300ms; }
+  .play .why-title { animation-delay: 4500ms; }
+  .play .reason { animation-delay: 4600ms; }
+  .play .reason:nth-of-type(2) { animation-delay: 4720ms; }
+  .play .reason:nth-of-type(3) { animation-delay: 4840ms; }
+  .play .foot-note { animation-delay: 5000ms; }
+
+  /* ---------- reference grid ---------- */
+  .ref { padding: 40px 0 96px; border-top: 1px solid var(--hairline); }
+  .ref h2 { font-family: var(--serif); font-weight: 400; font-size: 34px; letter-spacing: -0.02em; margin-bottom: 8px; }
+  .ref .sub { color: var(--muted); max-width: 52ch; margin-bottom: 40px; }
+  .bento { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; }
+  .cell {
+    border: 1px solid var(--hairline); background: var(--surface);
+    border-radius: 12px; padding: 22px; min-width: 0;
+  }
+  .cell .ex, .cell p, .cell h3 { overflow-wrap: anywhere; }
+  .cell.w3 { grid-column: span 3; }
+  .cell.w2 { grid-column: span 2; }
+  .cell h3 { font-family: var(--mono); font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+  .cell p { font-size: 13.5px; color: var(--muted); }
+  .cell p code {
+    font-family: var(--mono); font-size: 12px; background: var(--blue-bg);
+    color: var(--blue-ink); padding: 1px 5px; border-radius: 4px;
+  }
+  .cell .ex {
+    font-family: var(--mono); font-size: 11.5px; color: var(--ink);
+    background: var(--canvas); border: 1px solid var(--hairline);
+    border-radius: 6px; padding: 8px 10px; margin-top: 12px;
+  }
+
+  /* ---------- numbers strip ---------- */
+  .numbers { border-top: 1px solid var(--hairline); padding: 40px 0 110px; }
+  .numbers h2 { font-family: var(--serif); font-weight: 400; font-size: 34px; letter-spacing: -0.02em; margin-bottom: 36px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.07em;
+    text-transform: uppercase; color: var(--muted); font-weight: 500;
+    text-align: right; padding: 0 14px 12px 0; border-bottom: 1px solid var(--hairline);
+  }
+  th:first-child { text-align: left; }
+  td { padding: 13px 14px 13px 0; text-align: right; border-bottom: 1px solid var(--hairline); font-family: var(--mono); font-size: 13px; }
+  td:first-child { text-align: left; font-family: var(--sans); font-size: 14px; }
+  td.best { color: var(--ink); font-weight: 600; }
+  .numbers .fine { margin-top: 18px; font-size: 12.5px; color: var(--muted); max-width: 70ch; }
+
+  @media (max-width: 960px) {
+    .hero-grid { grid-template-columns: 1fr; gap: 24px; }
+    .flow { grid-template-columns: 1fr; }
+    .stage { min-height: 0; }
+    .bento { grid-template-columns: 1fr 1fr; }
+    .cell.w3, .cell.w2 { grid-column: span 1; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .play .stage, .play .chip, .play .verdict-head, .play .why-title,
+    .play .reason, .play .foot-note { animation-duration: 1ms; animation-delay: 0ms; }
+    .play .sig-fill { transition-duration: 1ms; }
+  }
+</style>
+</head>
+<body>
+
+<header class="wrap">
+  <div class="hero-grid">
+    <div>
+      <div class="kicker">laya-phishield / how it decides</div>
+      <h1>Eight narrow questions, one verdict, every reason named.</h1>
+    </div>
+    <div class="hero-side">
+      <p>No single "is this phishing?" call. A deterministic pre-pass reads
+      the headers and links, a local decision model answers <strong>eight
+      atomic yes/no signals</strong> in one forward pass, and a logistic head
+      combines them into a score with its reasons attached.</p>
+      <p>Both runs below replay <strong>real measured values</strong> from the
+      shipped model.</p>
+    </div>
+  </div>
+</header>
+
+<section class="flow-outer wrap" aria-label="Pipeline animation">
+  <div class="controls">
+    <div class="seg" role="group" aria-label="Choose email">
+      <button id="btn-phish" aria-pressed="true">Phishing email</button>
+      <button id="btn-legit" aria-pressed="false">Legitimate email</button>
+    </div>
+    <button class="replay" id="btn-replay">Replay</button>
+    <div class="spacer"></div>
+    <div class="step-caption" id="caption"><b>01</b>&ensp;the email arrives</div>
+  </div>
+
+  <div class="flow state-phish" id="flow">
+    <div class="stage">
+      <div class="stage-label"><span class="n">01</span>email</div>
+      <div class="chrome"><i></i><i></i><i></i></div>
+      <div class="email-from" id="e-from"><b>PayPal Security</b> &lt;no-reply@paypal-account-verify.example&gt;</div>
+      <div class="email-subject" id="e-subject">URGENT: Your account has been limited - action required within 24 hours</div>
+      <div class="email-body" id="e-body">Dear Customer,
+
+We detected unusual activity. To restore access you must confirm your password within 24 hours.
+
+Please confirm your account login through the link below:
+
+<span class="link-host">https://paypal-account-verify.example/</span>&hellip;
+
+PayPal Security Team</div>
+    </div>
+
+    <div class="stage">
+      <div class="stage-label"><span class="n">02</span>deterministic pre-pass</div>
+      <div id="flags">
+        <span class="chip chip-yellow" id="flag-1">display name claims a brand it does not own</span>
+        <span class="chip chip-quiet" id="flag-2">no other header or URL flag fires</span>
+      </div>
+      <p class="flags-note">Pure stdlib parsing: reply-to mismatch, IP-literal
+      and punycode link hosts, homoglyph brand domains, SPF/DKIM failures.
+      Obfuscated artifacts become readable statements the model can weigh.</p>
+    </div>
+
+    <div class="stage">
+      <div class="stage-label"><span class="n">03</span>eight atomic signals &middot; one forward pass</div>
+      <div class="signals" id="signals"></div>
+    </div>
+
+    <div class="stage">
+      <div class="stage-label"><span class="n">04</span>logistic head &rarr; verdict</div>
+      <div class="verdict-head">
+        <span class="verdict-score" id="v-score">0.990</span>
+        <span class="verdict-tag" id="v-tag">phishing</span>
+      </div>
+      <div class="why-title">Why</div>
+      <div id="v-reasons">
+        <div class="reason"><span class="r-name">asks_credentials</span><span class="r-val">+2.56</span></div>
+        <div class="reason"><span class="r-name">urgency_pressure</span><span class="r-val">+1.86</span></div>
+        <div class="reason"><span class="r-name">external_link_risk</span><span class="r-val">+1.56</span></div>
+      </div>
+      <p class="foot-note">Contributions are coefficient &times; value in logit
+      space: what actually pushed the score. The same pipeline on the
+      legitimate email scores <b>0.053</b>.</p>
+    </div>
+  </div>
+</section>
+
+<section class="ref wrap" aria-label="The eight signals">
+  <h2>The eight signals</h2>
+  <p class="sub">Each is one narrow yes/no question over the structured email
+  state, phrased positively. Negated and forced-choice questions are the
+  documented failure mode this decomposition exists to avoid.</p>
+  <div class="bento">
+    <div class="cell w3"><h3>asks_credentials</h3>
+      <p>Does the email tell the recipient to confirm their password or account login to restore or keep access?</p>
+      <div class="ex">"confirm your password within 24 hours to restore your account"</div></div>
+    <div class="cell w3"><h3>external_link_risk</h3>
+      <p>Does the email send the recipient to click a link hosted on a domain unrelated to the sender or the brand it claims?</p>
+      <div class="ex">"PayPal" linking to http://203.0.113.41/verify</div></div>
+    <div class="cell w2"><h3>urgency_pressure</h3>
+      <p>Act immediately or within hours, for example threatening consequences for delay?</p>
+      <div class="ex">"within 24 hours or your account will be closed"</div></div>
+    <div class="cell w2"><h3>brand_impersonation</h3>
+      <p>Borrows the name or branding of a known company while the sending domain belongs to someone else?</p>
+      <div class="ex">"PayPal Security" from paypal-account-verify.example</div></div>
+    <div class="cell w2"><h3>payment_gift_request</h3>
+      <p>Asks for a payment, transfer, gift cards or cryptocurrency to the sender or an account the sender names?</p>
+      <div class="ex">"buy 8 x $100 gift cards and reply with the codes"</div></div>
+    <div class="cell w3"><h3>requests_pii</h3>
+      <p>Asks the recipient to send personal identity data such as an ID number, card number or date of birth?</p>
+      <div class="ex">"send your full name, date of birth and phone number"</div></div>
+    <div class="cell w3"><h3>too_good_to_be_true</h3>
+      <p>Promises an unearned prize, lottery win, inheritance or windfall?</p>
+      <div class="ex">"you have won GBP 2,500,000.00 - selected at random"</div></div>
+    <div class="cell w2"><h3>suspicious_instructions</h3>
+      <p>Asks the recipient to keep the request secret from colleagues or bypass normal procedures?</p>
+      <div class="ex">"do not discuss this with accounting yet"</div></div>
+    <div class="cell w2"><h3>negation trap, held</h3>
+      <p>A security drill saying "we never ask for your password" scores 0.11 on asks_credentials. Wording that broke this hard negative was rejected in testing.</p></div>
+    <div class="cell w2"><h3>wording is measured</h3>
+      <p>The first draft of asks_credentials scored 0.59 on a textbook phish. The shipped one-sentence wording scores 0.92 as the top reason. Same model, same email.</p></div>
+  </div>
+</section>
+
+<section class="numbers wrap" aria-label="Measured results">
+  <h2>Measured, not promised</h2>
+  <table>
+    <thead><tr><th>temporal test split, n=183</th><th>keyword</th><th>forced-choice</th><th>composite</th></tr></thead>
+    <tbody>
+      <tr><td>AUC</td><td>0.5947</td><td>0.9444</td><td class="best">0.9531</td></tr>
+      <tr><td>Precision / Recall @ 0.5</td><td>1.000 / 0.051</td><td>0.902 / 0.590</td><td class="best">0.913 / 0.808</td></tr>
+      <tr><td>FPR @ 95% TPR</td><td>1.000</td><td class="best">0.124</td><td>0.210</td></tr>
+      <tr><td>$ per 1,000 emails</td><td>$0</td><td>$0</td><td class="best">$0</td></tr>
+    </tbody>
+  </table>
+  <p class="fine">Nazario phishing vs Enron legitimate, MinHash-deduplicated
+  across classes (95 of 700 removed) and split per-class by time. The
+  composite beats the wide forced-choice question by 0.9 pt AUC and 21.8 pt
+  recall at the operating point; the wide question still ranks better at the
+  95%-recall tail, and that limit is reported with the win.</p>
+</section>
+
+<script>
+(function () {
+  "use strict";
+
+  var RUNS = {
+    phish: {
+      cls: "state-phish",
+      from: "<b>PayPal Security</b> &lt;no-reply@paypal-account-verify.example&gt;",
+      subject: "URGENT: Your account has been limited - action required within 24 hours",
+      body: "Dear Customer,\n\nWe detected unusual activity. To restore access you must confirm your password within 24 hours.\n\nPlease confirm your account login through the link below:\n\n<span class=\"link-host\">https://paypal-account-verify.example/</span>&hellip;\n\nPayPal Security Team",
+      flag1: "display name claims a brand it does not own",
+      flag2: "no other header or URL flag fires",
+      flag2quiet: true,
+      signals: [
+        ["asks_credentials", 0.92], ["external_link_risk", 0.91],
+        ["urgency_pressure", 0.86], ["brand_impersonation", 0.86],
+        ["suspicious_instructions", 0.22], ["payment_gift_request", 0.22],
+        ["requests_pii", 0.22], ["too_good_to_be_true", 0.00]
+      ],
+      hot: 0.5,
+      score: "0.990", tag: "phishing",
+      reasons: [["asks_credentials", "+2.56"], ["urgency_pressure", "+1.86"], ["external_link_risk", "+1.56"]]
+    },
+    legit: {
+      cls: "state-legit",
+      from: "<b>Alice Nguyen</b> &lt;alice.nguyen@acme-corp.example&gt;",
+      subject: "Release notes 1.4.2",
+      body: "Hi all,\n\nRelease 1.4.2 is out. Highlights: faster sync, two crash fixes, updated docs. See the changelog for details.\n\nBest,\nAlice",
+      flag1: "no header or URL flag fires",
+      flag1quiet: true,
+      flag2: null,
+      signals: [
+        ["brand_impersonation", 0.27], ["suspicious_instructions", 0.09],
+        ["urgency_pressure", 0.04], ["asks_credentials", 0.02],
+        ["external_link_risk", 0.03], ["payment_gift_request", 0.00],
+        ["requests_pii", 0.00], ["too_good_to_be_true", 0.00]
+      ],
+      hot: 0.5,
+      score: "0.053", tag: "legitimate",
+      reasons: [["brand_impersonation", "+0.46"], ["urgency_pressure", "+0.09"], ["suspicious_instructions", "+0.09"]]
+    }
+  };
+
+  var CAPTIONS = [
+    [0,    "<b>01</b> the email arrives"],
+    [850,  "<b>02</b> deterministic pre-pass reads headers and links"],
+    [1900, "<b>03</b> eight atomic signals, one forward pass on the local model"],
+    [4100, "<b>04</b> logistic head weighs signals and flags into a verdict"]
+  ];
+
+  var flow = document.getElementById("flow");
+  var captionEl = document.getElementById("caption");
+  var timers = [];
+
+  function clearTimers() { timers.forEach(clearTimeout); timers = []; }
+
+  function buildSignals(run) {
+    var host = document.getElementById("signals");
+    host.innerHTML = "";
+    run.signals.forEach(function (pair) {
+      var row = document.createElement("div");
+      row.className = "sig" + (pair[1] >= run.hot ? " hot" : "");
+      row.innerHTML =
+        '<span class="sig-name">' + pair[0] + "</span>" +
+        '<span class="sig-track"><span class="sig-fill"></span></span>' +
+        '<span class="sig-val">' + pair[1].toFixed(2) + "</span>";
+      host.appendChild(row);
+    });
+  }
+
+  function play(name) {
+    var run = RUNS[name];
+    clearTimers();
+    flow.classList.remove("play");
+    flow.className = "flow " + run.cls;
+
+    document.getElementById("e-from").innerHTML = run.from;
+    document.getElementById("e-subject").textContent = run.subject;
+    document.getElementById("e-body").innerHTML = run.body;
+
+    var f1 = document.getElementById("flag-1");
+    f1.textContent = run.flag1;
+    f1.className = "chip " + (run.flag1quiet ? "chip-quiet" : "chip-yellow");
+    var f2 = document.getElementById("flag-2");
+    if (run.flag2) { f2.style.display = ""; f2.textContent = run.flag2; }
+    else { f2.style.display = "none"; }
+
+    document.getElementById("v-score").textContent = run.score;
+    document.getElementById("v-tag").textContent = run.tag;
+    var reasons = document.getElementById("v-reasons");
+    reasons.innerHTML = run.reasons.map(function (r) {
+      return '<div class="reason"><span class="r-name">' + r[0] +
+             '</span><span class="r-val">' + r[1] + "</span></div>";
+    }).join("");
+
+    buildSignals(run);
+
+    // Force reflow so the entrance animations restart.
+    void flow.offsetWidth;
+    flow.classList.add("play");
+
+    CAPTIONS.forEach(function (c) {
+      timers.push(setTimeout(function () { captionEl.innerHTML = c[1]; }, c[0]));
+    });
+    timers.push(setTimeout(function () {
+      Array.prototype.forEach.call(flow.querySelectorAll(".sig"), function (row, i) {
+        var fill = row.querySelector(".sig-fill");
+        var valEl = row.querySelector(".sig-val");
+        var val = run.signals[i][1];
+        timers.push(setTimeout(function () {
+          fill.style.width = (val * 100) + "%";
+          valEl.style.opacity = "1";
+        }, 1900 + i * 110));
+      });
+    }, 0));
+  }
+
+  document.getElementById("btn-phish").addEventListener("click", function () {
+    this.setAttribute("aria-pressed", "true");
+    document.getElementById("btn-legit").setAttribute("aria-pressed", "false");
+    play("phish");
+  });
+  document.getElementById("btn-legit").addEventListener("click", function () {
+    this.setAttribute("aria-pressed", "true");
+    document.getElementById("btn-phish").setAttribute("aria-pressed", "false");
+    play("legit");
+  });
+  document.getElementById("btn-replay").addEventListener("click", function () {
+    play(document.getElementById("btn-legit").getAttribute("aria-pressed") === "true" ? "legit" : "phish");
+  });
+
+  play("phish");
+})();
+</script>
+</body>
+</html>
