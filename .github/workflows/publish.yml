@@ -1,0 +1,40 @@
+name: publish
+
+# Publishes to PyPI via trusted publishing (OIDC): no API token stored.
+# Configured on PyPI as owner=Gjusev, repo=laya-phishield, workflow=publish.yml.
+# Trigger: a published GitHub Release (drafts and prereleases are skipped
+# unless "prerelease" is removed below).
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write  # PyPI trusted publisher (OIDC)
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run the fast test suite
+        run: |
+          uv venv
+          uv pip install -e ".[dev]"
+          uv run pytest -q
+
+      - name: Build sdist and wheel
+        run: uv build
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/

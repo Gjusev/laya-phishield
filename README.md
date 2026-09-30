@@ -91,7 +91,14 @@ flowchart LR
 
 ## Quick start
 
-Requires Python 3.10+ and [uv](https://docs.astral.sh/uv/).
+Requires Python 3.10+ and [uv](https://docs.astral.sh/uv/). Released on PyPI,
+so either install directly (note: this pulls `laya` and with it
+`torch`/`transformers`, roughly a gigabyte of wheels) or clone for the eval
+tooling and demo:
+
+```bash
+uv tool install laya-phishield        # or: uv pip install laya-phishield
+```
 
 ```bash
 git clone https://github.com/Gjusev/laya-phishield.git
