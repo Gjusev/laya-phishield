@@ -27,7 +27,6 @@ jobs:
 
       - name: Run the fast test suite
         run: |
-          uv venv
           uv pip install -e ".[dev]"
           uv run pytest -q
 
