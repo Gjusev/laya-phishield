@@ -1,154 +1,221 @@
-# laya-phishield
+<p align="center">
+  <img src="docs/assets/laya-phishield-logo.png" alt="laya-phishield logo" width="164">
+</p>
 
-> Explainable phishing detection: eight atomic signals from a local decision model plus header/URL heuristics, combined by a classical head with per-signal reasons.
+<h1 align="center">laya-phishield</h1>
 
-Status: early development. Built on [laya](https://github.com/NandhaKishorM/laya),
-the open-source System 1 decision engine (Apache 2.0).
+<p align="center">
+  <strong>Explainable phishing detection that runs locally.</strong><br>
+  Eight focused semantic signals and deterministic email checks become one risk score—with every reason attached.
+</p>
 
-## Why
+<p align="center">
+  <a href="https://www.python.org/"><img alt="Python 3.10+" src="https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white"></a>
+  <a href="https://fastapi.tiangolo.com/"><img alt="FastAPI" src="https://img.shields.io/badge/API-FastAPI-009688?logo=fastapi&logoColor=white"></a>
+  <a href="LICENSE"><img alt="Apache 2.0 license" src="https://img.shields.io/badge/License-Apache--2.0-D22128?logo=apache&logoColor=white"></a>
+  <img alt="Local inference" src="https://img.shields.io/badge/Inference-local-111827">
+  <img alt="Project status: early development" src="https://img.shields.io/badge/Status-early_development-F59E0B">
+</p>
 
-- A forced phish/legit choice is the wide question that System 1 models answer badly; eight narrow yes/no signals is the pattern the ecosystem's field lessons recommend, and it yields explanations for free.
-- Every verdict names its reasons (per-signal probabilities plus deterministic flags), which is what risk and fraud teams actually need to operate.
+<p align="center">
+  <a href="#quick-start">Quick start</a> ·
+  <a href="#how-it-works">How it works</a> ·
+  <a href="#evaluation">Evaluation</a> ·
+  <a href="docs/how-it-works.html">Interactive explainer</a>
+</p>
 
-## Roadmap
+---
 
-- [x] Deterministic pre-pass: header checks, reply-to mismatch, URL and punycode extraction, brand homoglyphs
-- [x] Eight atomic signals (nouls) over a structured email state
-- [x] Logistic combination head trained on public data (Nazario phishing + Enron legitimate), with MinHash dedup and temporal split
-- [x] Eval: AUC and FPR at 95% TPR vs keyword baseline, forced-choice baseline and an LLM baseline (cost included)
-- [x] CLI for mbox/eml batches, HTTP API, and a paste-an-email demo
+<video src="brag-output/brag.mp4" poster="brag-output/brag.jpg" controls width="100%">
+  Your browser cannot play the demo. Open the MP4 with the link below.
+</video>
+
+<p align="center">
+  <a href="brag-output/brag.mp4">
+    <img src="brag-output/brag.jpg" alt="Video preview showing an explainable phishing verdict with a 0.990 risk score" width="100%">
+  </a><br>
+  <sub>▶ <a href="brag-output/brag.mp4">Watch the 20-second demo</a> · H.264 · 1080p</sub>
+</p>
+
+## The short version
+
+Most phishing classifiers answer one broad question: *“Is this phishing?”* That can produce a useful score, but it gives an analyst little evidence to review.
+
+`laya-phishield` decomposes that decision into eight narrow yes/no signals. A deterministic pre-pass catches header and URL artifacts, [laya](https://github.com/NandhaKishorM/laya) evaluates the semantic signals locally in one forward pass, and a logistic head combines everything into an auditable verdict.
+
+<table>
+  <tr>
+    <td align="center"><strong>0.9531</strong><br><sub>test AUC</sub></td>
+    <td align="center"><strong>0.913</strong><br><sub>precision @ 0.5</sub></td>
+    <td align="center"><strong>0.808</strong><br><sub>recall @ 0.5</sub></td>
+    <td align="center"><strong>$0</strong><br><sub>API cost / 1,000 emails</sub></td>
+  </tr>
+</table>
+
+> [!NOTE]
+> This is an early-stage research project, not a replacement for a production secure email gateway. Benchmark results come from the shipped temporal test split; see [Evaluation](#evaluation) for the methodology and limits.
+
+## Why this approach
+
+- **Explainable by construction.** Each verdict includes signal probabilities, deterministic flags, and the features that contributed most to the score.
+- **Local and inexpensive.** Detection runs on a local laya decision model; email content does not need to be sent to a hosted LLM API.
+- **Harder to fool with obfuscation.** Header, domain, punycode, homoglyph, SPF, and DKIM checks complement semantic analysis.
+- **Operationally flexible.** Scan `.eml`, `.mbox`, or `.jsonl` files, call the HTTP API, or use the Streamlit demo.
+- **Measured honestly.** Near-duplicates are removed before a per-class temporal split, and the documented tail-recall limitation is kept visible.
 
 ## How it works
 
-1. **Deterministic pre-pass** (`laya_phishield/extract.py`): parses the raw
-   email with the stdlib, extracts subject, sender display/domain, reply-to
-   domain, first URL host and a plain-text body excerpt, and raises
-   deterministic flags — reply-to mismatch, IP-literal or punycode link
-   hosts, brand homoglyph domains, brand-in-subdomain hosts, display-name
-   brand mismatch, SPF/DKIM failures. Flags become readable statements the
-   model can weigh, so obfuscated artifacts are never lost as opaque URLs.
-2. **Eight atomic signals** (`laya_phishield/signals.py`): one `system_one`
-   call to the local laya decision model answers eight narrow yes/no
-   questions over the structured state — `asks_credentials`,
-   `urgency_pressure`, `payment_gift_request`, `brand_impersonation`,
-   `requests_pii`, `too_good_to_be_true`, `suspicious_instructions`,
-   `external_link_risk`. The exact per-signal contract lives in
-   [`data/signals_schema.md`](data/signals_schema.md). Questions are phrased
-   in the positive: negated/forced-choice prompts are the documented failure
-   mode this decomposition avoids.
-
-Phase 2 trains the logistic combination head over the eight probabilities
-plus the flag codes, with reasons ordered by score contribution.
-
-## Evaluation
-
-Datasets: [Nazario phishing corpus](https://monkey.org/~jose/phishing/)
-(phishing2 + phishing3 mboxes) vs a reservoir sample of legitimate mail from
-the [Enron dataset](https://www.cs.cmu.edu/~enron/). Near-duplicate leakage —
-the classic inflation bug of these corpora — is removed with MinHash + LSH
-banding (32 bands x 4 rows, merge at estimated Jaccard >= 0.5, dedup across
-classes, oldest variant kept), and the split is per-class temporal (oldest
-70% train, newest 30% test; undated records stay in train). Every run
-reports how much overlap the dedup removed.
-
-Reproduce end to end (the featurization cache makes runs resumable):
-
-```bash
-uv run python evals/prepare_data.py --max-phish 350 --max-legit 350
-uv run python evals/run_eval.py --skip-gpt     # composite + keyword + forced-choice + ablation
-OPENAI_API_KEY=... uv run python evals/run_eval.py   # adds GPT-4o-mini on a class-balanced 200-email subset
+```mermaid
+flowchart LR
+    A[Raw RFC 822 email] --> B[Deterministic pre-pass]
+    B --> C[Structured email state]
+    C --> D[Eight atomic laya signals]
+    B --> E[Header and URL flags]
+    D --> F[Logistic combination head]
+    E --> F
+    F --> G[Risk score + label + reasons]
 ```
 
-### Results
+1. **Parse and inspect.** [`extract.py`](src/laya_phishield/extract.py) extracts the subject, sender and reply-to domains, first URL host, and a plain-text body excerpt. It also raises deterministic flags for reply-to mismatch, IP-literal or punycode links, brand homoglyphs, brands hidden in subdomains, display-name mismatch, and SPF/DKIM failures.
+2. **Score eight atomic signals.** [`signals.py`](src/laya_phishield/signals.py) asks the local decision model eight positively phrased questions in one forward pass. The full contract and hard negatives live in [`data/signals_schema.md`](data/signals_schema.md).
+3. **Combine and explain.** A trained logistic head weighs the eight probabilities and deterministic flags. It returns a score, a label, and the top feature contributions rather than an opaque binary decision.
 
-Measured on the temporal test split (n=183: 105 legitimate / 78 phishing;
-see `evals/results.json` for the full artifact, including per-signal
-ablation and the trained coefficients):
+### The eight signals
 
-| Metric | keyword | forced-choice | composite (laya + logit) | GPT-4o-mini |
-|---|---|---|---|---|
-| AUC | 0.5947 | 0.9444 | **0.9531** | TODO(measure: needs OPENAI_API_KEY) |
-| Precision / Recall @ 0.5 | 1.000 / 0.051 | 0.902 / 0.590 | **0.913 / 0.808** | TODO(measure: needs OPENAI_API_KEY) |
-| FPR @ 95% TPR | 1.000 | **0.124** | 0.210 | TODO(measure: needs OPENAI_API_KEY) |
-| $ per 1,000 emails | $0 | $0 | $0 | TODO(measure: needs OPENAI_API_KEY) |
+| Signal | What it asks |
+|---|---|
+| `asks_credentials` | Does the email ask the recipient to confirm a password or account login? |
+| `urgency_pressure` | Does it demand immediate action or threaten consequences for delay? |
+| `payment_gift_request` | Does it request money, gift cards, a transfer, or cryptocurrency? |
+| `brand_impersonation` | Does it borrow a known brand while using an unrelated sender domain? |
+| `requests_pii` | Does it request identity, card, or other sensitive personal data? |
+| `too_good_to_be_true` | Does it promise an unearned prize, inheritance, or windfall? |
+| `suspicious_instructions` | Does it ask the recipient to keep secrets or bypass normal procedure? |
+| `external_link_risk` | Does it point to a host unrelated to the claimed sender or brand? |
 
-Composite vs forced-choice (the delta this project exists to quantify):
-**+0.9 pt AUC** and **+21.8 pt recall at the 0.5 operating point** at
-comparable precision — the eight-signal decomposition recovers most of the
-phish the wide question scores just under its threshold. Honest limit: at
-the very tail the forced-choice ranks better (FPR@95%TPR 0.124 vs 0.210);
-the composite's advantage is at practical operating points, not at 95%
-recall.
+## Quick start
 
-Per-signal ablation (3-fold CV AUC over the full deduplicated corpus,
-n=605, with that one signal zeroed out; full-model CV AUC is 0.9568 —
-removing any single signal costs at most 0.4 pt, so no signal is a single
-point of failure and none is dead weight):
-
-| Signal zeroed | CV AUC | Drop vs full |
-|---|---|---|
-| asks_credentials | 0.9525 | 0.0043 |
-| brand_impersonation | 0.9537 | 0.0031 |
-| external_link_risk | 0.9544 | 0.0024 |
-| requests_pii | 0.9547 | 0.0021 |
-| urgency_pressure | 0.9559 | 0.0009 |
-| payment_gift_request | 0.9568 | 0.0000 |
-| too_good_to_be_true | 0.9573 | -0.0005 |
-| suspicious_instructions | 0.9576 | -0.0008 |
-
-The two negative drops mean the model is at the CV noise floor for those
-signals: their value shows up in the verdict *reasons* (explainability)
-rather than in extra ranking power on this corpus.
-
-## Product
-
-Visual explainer: [`docs/how-it-works.html`](docs/how-it-works.html) animates
-the whole pipeline on real measured values (phishing and legitimate run,
-side by side; stills in `docs/assets/`). Launch video: `brag-output/brag.mp4`.
-
-Scan files in batch (mbox, single eml, or jsonl of `{"raw": ...}` records):
+Requires Python 3.10+ and [uv](https://docs.astral.sh/uv/).
 
 ```bash
-uv run laya-phishield scan inbox.mbox            # human-readable lines
-uv run laya-phishield scan inbox.mbox --json     # one verdict object per line
-uv run laya-phishield scan a.eml b.jsonl --limit 100
+git clone https://github.com/Gjusev/laya-phishield.git
+cd laya-phishield
+uv venv
+uv pip install -e .
+
+# Scan one email, a mailbox, or JSONL records shaped as {"raw": "..."}
+uv run laya-phishield scan suspicious.eml
+uv run laya-phishield scan inbox.mbox --json
+uv run laya-phishield scan mail-1.eml mail-2.eml --limit 100
 ```
 
-HTTP API (loads the checkpoint on the first request):
+The model checkpoint is downloaded on first use. Human-readable output names the strongest reasons; `--json` emits one complete verdict object per email.
 
-```bash
-uv run uvicorn laya_phishield.serve:app --port 8000
-curl -s localhost:8000/scan -H 'content-type: application/json' \
-     -d '{"raw": "<full RFC822 email>"}'
+```text
+PHISHING 0.990  suspicious.eml#1  [asks_credentials 2.56, urgency_pressure 1.86]
+1 email scanned, 1 flagged
 ```
 
-Paste-an-email demo:
+### HTTP API
+
+Start the app as a Uvicorn factory so the model remains lazy-loaded. The command below adds Uvicorn to the run environment without changing the project dependencies:
 
 ```bash
-uv run pip install -e ".[demo]"
+uv run --with uvicorn uvicorn laya_phishield.serve:create_app --factory --port 8000
+
+curl -s http://localhost:8000/scan \
+  -H 'content-type: application/json' \
+  -d '{"raw": "<full RFC822 email>"}'
+```
+
+Interactive API documentation is available at `http://localhost:8000/docs` while the server is running.
+
+### Paste-an-email demo
+
+```bash
+uv pip install -e ".[demo]"
 uv run streamlit run app.py
 ```
 
-## Testing
+## Visual walkthrough
 
-`pytest` runs the fast suite only: the laya agent is mocked with a
-deterministic fake, so no checkpoint is ever downloaded. The smoke run over
-a fixed corpus of 20 phishing + 20 legitimate emails uses a real checkpoint
-and is opt-in:
+The [interactive explainer](docs/how-it-works.html) replays both examples with real measured values from the shipped model.
+
+<table>
+  <tr>
+    <td align="center"><strong>Phishing email</strong></td>
+    <td align="center"><strong>Legitimate email</strong></td>
+  </tr>
+  <tr>
+    <td><a href="docs/assets/how-it-works-phish.png"><img src="docs/assets/how-it-works-phish.png" alt="Phishing email walkthrough" width="100%"></a></td>
+    <td><a href="docs/assets/how-it-works-legit.png"><img src="docs/assets/how-it-works-legit.png" alt="Legitimate email walkthrough" width="100%"></a></td>
+  </tr>
+</table>
+
+## Evaluation
+
+The benchmark compares the composite model with a keyword baseline and a single forced-choice laya question.
+
+| Metric | Keyword | Forced choice | **Composite** |
+|---|---:|---:|---:|
+| AUC | 0.5947 | 0.9444 | **0.9531** |
+| Precision @ 0.5 | **1.000** | 0.902 | 0.913 |
+| Recall @ 0.5 | 0.051 | 0.590 | **0.808** |
+| FPR @ 95% TPR | 1.000 | **0.124** | 0.210 |
+| API cost / 1,000 emails | $0 | $0 | $0 |
+
+Results use a temporal test split of **183 emails**: 105 legitimate and 78 phishing. The source corpus combines [Nazario phishing emails](https://monkey.org/~jose/phishing/) with a reservoir sample of legitimate [Enron mail](https://www.cs.cmu.edu/~enron/).
+
+To reduce leakage, MinHash + LSH removes near-duplicates across both classes before splitting. Each class is then split chronologically: the oldest 70% for training and the newest 30% for testing; undated messages remain in training. Full coefficients, ablations, and run metadata are stored in [`evals/results.json`](evals/results.json).
+
+The composite improves over forced choice by **0.9 AUC points** and **21.8 recall points** at the 0.5 operating threshold. The limitation matters too: at 95% recall, forced choice has the lower false-positive rate (0.124 vs 0.210). The composite is strongest at the practical operating point measured here, not at the extreme-recall tail.
+
+### Reproduce the benchmark
+
+```bash
+uv pip install -e ".[eval]"
+uv run python evals/prepare_data.py --max-phish 350 --max-legit 350
+uv run python evals/run_eval.py --skip-gpt
+
+# Optional hosted-LLM baseline; incurs OpenAI API usage
+OPENAI_API_KEY=... uv run python evals/run_eval.py
+```
+
+The featurization cache makes interrupted runs resumable.
+
+## Testing and development
+
+```bash
+uv pip install -e ".[dev]"
+uv run pytest
+```
+
+The default suite is fast and uses a deterministic fake agent, so it never downloads a checkpoint. The opt-in smoke test uses the real model:
 
 ```bash
 uv run pytest -m slow
 ```
 
-## Development setup
+## Project map
 
-Requires Python 3.10+ and [uv](https://docs.astral.sh/uv/) (or any venv + pip):
+```text
+src/laya_phishield/
+├── extract.py       # email parsing and deterministic checks
+├── signals.py       # eight semantic signal definitions
+├── combine.py       # logistic scoring and feature attribution
+├── pipeline.py      # raw email → explainable verdict
+├── cli.py           # batch CLI
+├── serve.py         # FastAPI application
+└── data/head.json   # trained combination head
 
-```bash
-uv venv
-uv pip install -e ".[dev]"
-pytest
+evals/               # dataset preparation, baselines, and benchmark
+docs/                # interactive explainer and visual assets
+tests/               # fast behavior tests and real-model smoke tests
 ```
+
+## Acknowledgements
+
+Built on [laya](https://github.com/NandhaKishorM/laya), the open-source System 1 decision engine. Evaluation data comes from the Nazario phishing corpus and the Enron email dataset.
 
 ## License
 
